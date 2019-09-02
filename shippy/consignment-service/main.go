@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	pb "github.com/imeraj/go_microservices/shippy/consignment-service/proto/consignment"
 	"github.com/micro/go-grpc"
 	"github.com/micro/go-micro"
+	"github.com/micro/go-micro/server"
 	"golang.org/x/net/context"
 )
 
@@ -49,7 +51,16 @@ func (s *Service) CreateConsignment(ctx context.Context, req *pb.Consignment, re
 
 func (s *Service) GetConsignments(ctx context.Context, req *pb.GetRequest, resp *pb.Response) error {
 	consignments := s.repo.GetAll()
-	resp.Consignments = consignments
+
+	if len(consignments) > 0 {
+		resp.Created = true
+		resp.Consignment = consignments[0]
+	}
+
+	if len(consignments) > 1 {
+		resp.Consignments = consignments[1:]
+	}
+
 	return nil
 }
 
@@ -64,6 +75,7 @@ func main() {
 
 	// Init will parse the command line flags.
 	service.Init()
+	service.Server().Init(server.Address(os.Getenv("MICRO_SERVER_ADDRESS")))
 
 	// Register handler
 	pb.RegisterShippingServiceHandler(service.Server(), &Service{repo})
