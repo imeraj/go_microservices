@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	pb "github.com/imeraj/go_microservices/shippy/consignment-service/proto/consignment"
+	vesselProto "github.com/imeraj/go_microservices/shippy/vessel-service/proto/vessel"
 	"github.com/micro/go-grpc"
 	"github.com/micro/go-micro"
 	"github.com/micro/go-micro/server"
@@ -33,19 +35,28 @@ func (repo *Repository) GetAll() []*pb.Consignment {
 
 ///////
 type Service struct {
-	repo IRepository
+	repo         IRepository
+	vesselClient vesselProto.VesselServiceClient
 }
 
-func (s *Service) CreateConsignment(ctx context.Context, req *pb.Consignment, resp *pb.Response) error {
+func (s *Service) CreateConsignment(ctx context.Context, req *pb.Consignment, res *pb.Response) error {
+	vesselResponse, err := s.vesselClient.FindAvailable(context.Background(), &vesselProto.Specification{
+		MaxWeight: req.Weight,
+		Capacity:  int32(len(req.Containers)),
+	})
+	if err != nil {
+		return err
+	}
+	log.Printf("Found vessel: %s \n", vesselResponse.Vessel.Name)
+
+	req.VesselId = vesselResponse.Vessel.Id
 	consignment, err := s.repo.Create(req)
 	if err != nil {
-		resp = nil
 		return err
 	}
 
-	resp.Created = true
-	resp.Consignment = consignment
-
+	res.Created = true
+	res.Consignment = consignment
 	return nil
 }
 
@@ -77,8 +88,10 @@ func main() {
 	service.Init()
 	service.Server().Init(server.Address(os.Getenv("MICRO_SERVER_ADDRESS")))
 
+	vesselClient := vesselProto.NewVesselServiceClient("vessel-service", service.Client())
+
 	// Register handler
-	pb.RegisterShippingServiceHandler(service.Server(), &Service{repo})
+	pb.RegisterShippingServiceHandler(service.Server(), &Service{repo, vesselClient})
 
 	// Run the server
 	if err := service.Run(); err != nil {
