@@ -7,6 +7,7 @@ services:
       - 50051:50051
     environment:
       MICRO_SERVER_ADDRESS: ":50051"
+      DB_HOST: "datastore:27017"
  
   vessel-service:
     build: ./vessel-service
@@ -14,3 +15,9 @@ services:
       - 50052:50051
     environment:
       MICRO_SERVER_ADDRESS: ":50051"
+      DB_HOST: "datastore:27017"
+     
+  datastore:
+    image: mongo
+    ports:
+      - 27017:27017    
