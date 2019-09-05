@@ -1,14 +1,18 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
 
 	pb "github.com/imeraj/go_microservices/shippy/consignment-service/proto/consignment"
+	userProto "github.com/imeraj/go_microservices/shippy/user-service/proto/auth"
 	vesselProto "github.com/imeraj/go_microservices/shippy/vessel-service/proto/vessel"
 	"github.com/micro/go-grpc"
+	"github.com/micro/go-grpc/client"
 	"github.com/micro/go-micro"
+	"github.com/micro/go-micro/metadata"
 	"github.com/micro/go-micro/server"
 	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2"
@@ -102,6 +106,33 @@ func (s *Service) GetConsignments(ctx context.Context, req *pb.GetRequest, res *
 }
 
 ////////
+func AuthWrapper(fn server.HandlerFunc) server.HandlerFunc {
+	return func(ctx context.Context, req server.Request, resp interface{}) error {
+		meta, ok := metadata.FromContext(ctx)
+		if !ok {
+			return errors.New("no auth meta-data found in request")
+		}
+
+		fmt.Printf("%v\n", meta)
+
+		token := meta["token"]
+		log.Println("Authenticating with token: ", token)
+
+		// Auth here
+		authClient := userProto.NewAuthClient("user-service", client.DefaultClient)
+		_, err := authClient.ValidateToken(context.Background(), &userProto.Token{
+			Token: token,
+		})
+		if err != nil {
+			return err
+		}
+
+		err = fn(ctx, req, resp)
+		return err
+	}
+}
+
+////////
 func main() {
 	host := os.Getenv("DB_HOST")
 	if host == "" {
@@ -117,6 +148,7 @@ func main() {
 	// Create a new service. Optionally include some options here.
 	service := grpc.NewService(
 		micro.Name("consignment-service"),
+		micro.WrapHandler(AuthWrapper),
 	)
 
 	// Init will parse the command line flags.
