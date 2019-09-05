@@ -1,7 +1,11 @@
 package main
 
 import (
-	pb "github.com/imeraj/go_microservices/shippy/user-service/proto/user"
+	"errors"
+	"log"
+
+	pb "github.com/imeraj/go_microservices/shippy/user-service/proto/auth"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
 )
 
@@ -29,22 +33,52 @@ func (s *Service) GetAll(ctx context.Context, req *pb.Request, res *pb.Response)
 }
 
 func (s *Service) Auth(ctx context.Context, req *pb.User, res *pb.Token) error {
-	_, err := s.repo.GetByEmailAndPassword(req)
+	log.Println("Logging in with:", req.Email, req.Password)
+
+	user, err := s.repo.GetByEmail(req.Email)
 	if err != nil {
 		return err
 	}
-	res.Token = "testingabc"
+	log.Println(user)
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		return err
+	}
+
+	token, err := s.tokenService.Encode(user)
+	if err != nil {
+		return err
+	}
+
+	res.Token = token
 	return nil
 }
 
 func (s *Service) Create(ctx context.Context, req *pb.User, res *pb.Response) error {
+	hashedPass, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	req.Password = string(hashedPass)
 	if err := s.repo.Create(req); err != nil {
 		return err
 	}
+
 	res.User = req
 	return nil
 }
 
 func (s *Service) ValidateToken(ctx context.Context, req *pb.Token, res *pb.Token) error {
+	claims, err := s.tokenService.Decode(req.Token)
+	if err != nil {
+		return err
+	}
+
+	if claims.User.Id == "" {
+		return errors.New("invalid user")
+	}
+
+	res.Valid = true
 	return nil
 }

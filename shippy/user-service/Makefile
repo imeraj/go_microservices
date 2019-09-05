@@ -1,6 +1,6 @@
 build:
 	protoc -I. --go_out=plugins=micro:$(GOPATH)/src/github.com/imeraj/go_microservices/shippy/user-service \
-		proto/user/user.proto
+		proto/auth/auth.proto
 	GOOS=linux GOARCH=amd64 go build
 	docker build -t user-service .
 

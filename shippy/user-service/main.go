@@ -1,11 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
-	pb "github.com/imeraj/go_microservices/shippy/user-service/proto/user"
+	pb "github.com/imeraj/go_microservices/shippy/user-service/proto/auth"
 	"github.com/micro/go-grpc"
 	"github.com/micro/go-micro"
 	"github.com/micro/go-micro/server"
@@ -34,10 +33,10 @@ func main() {
 	service.Server().Init(server.Address(os.Getenv("MICRO_SERVER_ADDRESS")))
 
 	// Register handler
-	pb.RegisterUserServiceHandler(service.Server(), &Service{repo, tokenService})
+	pb.RegisterAuthHandler(service.Server(), &Service{repo, tokenService})
 
 	// Run the server
 	if err := service.Run(); err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 }
