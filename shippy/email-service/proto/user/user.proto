@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package auth;
+
+message User {
+    string id = 1;
+    string name = 2;
+    string company = 3;
+    string email = 4;
+    string password = 5;
+    string token = 6;
+}

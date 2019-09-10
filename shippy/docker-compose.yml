@@ -20,14 +20,27 @@ services:
   user-service:
     build: ./user-service
     ports:
-      - 50053:50051
+      - 50053:50051 
+    depends_on:
+      - nats-server
     environment:
+      NATS_URI: "nats://nats-server:4222" 
       MICRO_SERVER_ADDRESS: ":50051"
       DB_NAME: "postgres"
       DB_HOST: "database"
       DB_PORT: "5432"
       DB_USER: "postgres"
       DB_PASSWORD: ""
+
+  email-service:
+    build: ./email-service
+    ports:
+      - 50054:50051
+    depends_on:
+      - nats-server 
+    environment:
+      NATS_URI: "nats://nats-server:4222"
+      MICRO_SERVER_ADDRESS: ":50051"
 
   datastore:
     image: mongo
@@ -37,4 +50,11 @@ services:
   database:
     image: postgres
     ports:
-      - 5432:5432    
+      - 5432:5432  
+      
+  nats-server:
+    image: nats
+    ports:
+      - 4222:4222
+      - 6222:6222
+      - 8222:8222

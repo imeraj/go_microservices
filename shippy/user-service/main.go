@@ -8,6 +8,7 @@ import (
 	"github.com/micro/go-grpc"
 	"github.com/micro/go-micro"
 	"github.com/micro/go-micro/server"
+	"github.com/nats-io/nats.go"
 )
 
 func main() {
@@ -32,8 +33,14 @@ func main() {
 	service.Init()
 	service.Server().Init(server.Address(os.Getenv("MICRO_SERVER_ADDRESS")))
 
+	uri := os.Getenv("NATS_URI")
+	nc, err := nats.Connect(uri)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Register handler
-	pb.RegisterAuthHandler(service.Server(), &Service{repo, tokenService})
+	pb.RegisterAuthHandler(service.Server(), &Service{repo, tokenService, nc})
 
 	// Run the server
 	if err := service.Run(); err != nil {
